@@ -792,7 +792,7 @@ function updatePU(pu) {
     }
     scene.remove(pu);
     //BARABARABARA: AUUMENTAR ESSE NÚMERO, PARA AS ESTRELAS
-    if (ballLista.length <= 1) duplicaBola();
+    if (ballLista.length <= 20) duplicaBola();
   }
   if (
     tbintersects.length > 0 &&
