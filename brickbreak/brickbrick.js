@@ -485,7 +485,7 @@ function updateBrick(brick) {
       brokenBricks += 1;
 
       //Bamboleio
-      if (brokenBricks >= 2) {
+      if (brokenBricks >= 5) {
         var position = new THREE.Vector3();
         obj.getWorldPosition(position);
 
