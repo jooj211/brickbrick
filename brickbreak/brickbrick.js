@@ -139,6 +139,9 @@ document.addEventListener("keydown", (event) => {
     if (level == 1) {
       level = 2;
       brickHolderX = -0.95;
+    } else if (level == 2) {
+      level = 3;
+      brickHolderX = -1.05;
     } else {
       level = 1;
       brickHolderX = -1.05;
@@ -365,6 +368,19 @@ function chooseLevel(level) {
     5,3,6,2,5,3,1,4,5,3,6,2,5,3
     2,6,3,5,4,1,3,5,2,6,3,5,4,1
     6,2,5,3,1,4,5,3,6,2,5,3,1,4
+    `;
+  } else if (level == 3) {
+    matrixString = `
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2
+    3,3,3,3,3,3,3,3,3,3,3,3,3,3
+    4,4,4,4,4,4,4,4,4,4,4,4,4,4
+    5,5,5,5,5,5,5,5,5,5,5,5,5,5
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6
     `;
   }
 
@@ -843,6 +859,9 @@ function render() {
     if (level == 1) {
       level = 2;
       brickHolderX = -0.95;
+    } else if (level == 2) {
+      level = 3;
+      brickHolderX = -1.05;
     } else {
       level = 1;
       brickHolderX = -1.05;
