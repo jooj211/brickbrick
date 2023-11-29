@@ -44,13 +44,6 @@ botaoPause.style.display = "none";
 
 let glow = 0.5;
 
-botao.addEventListener("click", function () {
-  sceneIndex = 1;
-  botao.style.display = "none";
-  botaoLaunch.style.display = "block";
-  botaoFS.style.display = "block";
-  botaoPause.style.display = "block";
-});
 function createTextGeometry(character, position, cena) {
   const loader = new FontLoader();
   loader.load("../assets/fonts/helvetiker_bold.typeface.json", function (font) {
@@ -110,11 +103,6 @@ botaofinal.style.width = "200px";
 botaofinal.style.height = "75px";
 botaofinal.style.fontSize = "50px";
 document.body.appendChild(botaofinal);
-
-botaofinal.addEventListener("click", function () {
-  sceneIndex = 0;
-  botaofinal.style.display = "none";
-});
 
 createTextFromString("G A M E", new THREE.Vector3(-7, 5, 0), endscene);
 createTextFromString("O V E R", new THREE.Vector3(-7, 1, 0), endscene);
@@ -221,13 +209,7 @@ var tempoDecorrido = 0;
 const camera = initializeCamera();
 const auxCamera = initializeCamera();
 camera.add(listener);
-window.addEventListener(
-  "resize",
-  function () {
-    onWindowResize(camera, renderer);
-  },
-  false
-);
+
 scene.add(camera);
 
 let collidableMeshList = [];
@@ -256,6 +238,27 @@ ballLista.push(
 
 scene.add(camera);
 let powerUpsList = [];
+
+botao.addEventListener("click", function () {
+  sceneIndex = 1;
+  botao.style.display = "none";
+  botaoLaunch.style.display = "block";
+  botaoFS.style.display = "block";
+  botaoPause.style.display = "block";
+});
+
+botaofinal.addEventListener("click", function () {
+  sceneIndex = 0;
+  botaofinal.style.display = "none";
+});
+
+window.addEventListener(
+  "resize",
+  function () {
+    onWindowResize(camera, renderer);
+  },
+  false
+);
 
 document.addEventListener("keydown", (event) => {
   if (event.code == "KeyR") {
@@ -825,47 +828,98 @@ function createHitbox() {
 
 // Function to update the pad
 function updatePad() {
-  console.log(isMouseDown);
+  console.log(isInputActive);
 
+  // Set initial hitbox position
   hitbox.position.copy(pad.position);
   hitbox.position.y += 0.05;
-  // Event listener for mouse down
-  window.addEventListener("mousedown", onMouseDown);
 
-  function onMouseDown(event) {
+  // Event listeners for touch events
+  window.addEventListener("touchstart", onTouchStart);
+  window.addEventListener("touchend", onTouchEnd);
+  window.addEventListener("touchmove", onTouchMoveLocked);
+
+  function onTouchStart(event) {
+    handleInputStart(event.touches[0]);
+  }
+
+  function onTouchEnd(event) {
+    handleInputEnd(event.touches[0]);
+  }
+
+  // Handle touch input start
+  function handleInputStart(event) {
     const canvasBounds = renderer.domElement.getBoundingClientRect();
 
     if (gameStatus == 0 || gameStatus == 1) {
-      let pointer = new THREE.Vector2();
-      pointer.x =
+      let touch = new THREE.Vector2();
+      touch.x =
         ((event.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
-      pointer.y =
+      touch.y =
         -((event.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
 
       // Define the boundaries of the restricted area
       const minX = -0.9; // Minimum x-coordinate within the area
       const maxX = 0.9; // Maximum x-coordinate within the area
 
-      // if the mouse intersects the hitbox, set the flag to true
+      // if the touch intersects the hitbox, set the flag to true
       const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(pointer, camera);
+      raycaster.setFromCamera(touch, camera);
       const intersects = raycaster.intersectObjects([hitbox]);
 
       if (intersects.length > 0) {
-        isMouseDown = true;
+        isInputActive = true;
       }
     }
   }
 
-  // Event listener for mouse up
-  window.addEventListener("mouseup", onMouseUp);
-
-  function onMouseUp(event) {
-    isMouseDown = false;
+  // Handle touch input end
+  function handleInputEnd() {
+    isInputActive = false;
   }
 
-  // Event listener for mouse move
-  window.addEventListener("mousemove", onMouseMoveLocked);
+  // Handle touch move
+  function onTouchMoveLocked(event) {
+    if (isInputActive) {
+      const touch = event.touches[0];
+      handleTouchMove(touch);
+    }
+  }
+
+  // Handle touch movement
+  function handleTouchMove(touch) {
+    const canvasBounds = renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2();
+    pointer.x =
+      ((touch.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
+    pointer.y =
+      -((touch.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
+
+    // Calculate the horizontal movement based on touch position
+    const movementX = pointer.x - previousPointerX;
+
+    // Define the horizontal movement speed
+    const horizontalSpeed = 0.01; // Adjust this value as needed
+
+    // Calculate the new x-coordinate for the platform
+    const newPlatformX = pad.position.x + movementX * horizontalSpeed;
+
+    // Define the boundaries of the restricted area
+    const minX = -0.9; // Minimum x-coordinate within the area
+    const maxX = 0.9; // Maximum x-coordinate within the area
+
+    // Clamp the new x-coordinate within the specified boundaries
+    const clampedX = Math.min(Math.max(newPlatformX, minX), maxX);
+
+    // Update the platform's position
+    pad.position.setX(clampedX);
+
+    // Update the previous touch position
+    previousPointerX = pointer.x;
+  }
+
+  // Store the previous touch position
+  let previousPointerX = 0;
 }
 
 function updateBall(b) {
