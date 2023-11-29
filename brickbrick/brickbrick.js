@@ -1,9 +1,115 @@
 import * as THREE from "three";
 import { MathUtils } from "three";
+import { OrbitControls } from "../build/jsm/controls/OrbitControls.js";
 import { PointerLockControls } from "../build/jsm/controls/PointerLockControls.js";
+import { GLTFLoader } from "../build/jsm/loaders/GLTFLoader.js";
 import { CSG } from "../libs/other/CSGMesh.js";
 import KeyboardState from "../libs/util/KeyboardState.js";
-import { SecondaryBox, initRenderer } from "../libs/util/util.js";
+import { InfoBox, SecondaryBox, initRenderer} from "../libs/util/util.js";
+import { FontLoader } from "../build/jsm/loaders/FontLoader.js";
+import { TextGeometry } from "../build/jsm/geometries/TextGeometry.js";
+
+let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
+
+//Main menu
+let menuscene = new THREE.Scene();
+let menuLight = new THREE.AmbientLight(0xffffff,0.3);
+let menucamera =  new THREE.PerspectiveCamera(60, 2, 1, 10000); //fov, aspect, near, far
+menuscene.add(menucamera);
+menuscene.add(menuLight); 
+menucamera.position.set(0,0, 20);
+menucamera.lookAt(0, -1, 0)
+const botao = document.createElement('button');
+botao.innerHTML = "START";
+botao.style.position = 'absolute';
+botao.style.top = '50%';
+botao.style.left = '50%';
+botao.style.transform = 'translate(-50%, 50%)';
+botao.style.width = "200px";
+botao.style.height = "75px";
+botao.style.fontSize = "50px";
+document.body.appendChild(botao);
+
+let glow = 0.5; 
+
+
+botao.addEventListener('click', function(){
+  sceneIndex = 1; 
+  botao.style.display = 'none'; 
+})
+function createTextGeometry(character, position, cena) {
+  const loader = new FontLoader();
+  loader.load(
+    "../assets/fonts/helvetiker_bold.typeface.json",
+    function (font) {
+      const material = new THREE.MeshPhongMaterial({
+        emissive: 0xffffff,
+        emissiveIntensity: glow,
+        color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+      });
+
+      const geometry = new TextGeometry(character, {
+        font: font,
+        size: 3,
+        height: 0.1,
+        curveSegments: 12,
+      });
+
+      const textMesh = new THREE.Mesh(geometry, material);
+      cena.add(textMesh);
+      textMesh.position.copy(position);
+
+      textMesh.castShadow = true;
+      textMesh.receiveShadow = true;
+    }
+  );
+  
+}
+
+function createTextFromString(text, position, cena) {
+  const characters = text.split("");
+  characters.forEach((character, index) => {
+    const offset = index * 1.75;
+    createTextGeometry(
+      character,
+      new THREE.Vector3(position.x + offset, position.y, position.z),
+      cena
+    );
+  });
+}
+
+createTextFromString("B R IC K", new THREE.Vector3(-7, 5, 0),menuscene);
+createTextFromString("B R IC K", new THREE.Vector3(-7, 1, 0),menuscene);
+//Fim do menu Principal
+
+//Menu Final
+let endscene = new THREE.Scene();
+let endLight = new THREE.AmbientLight(0xffffff,0.3);
+let endcamera =  new THREE.PerspectiveCamera(60, 2, 1, 10000); //fov, aspect, near, far
+endscene.add(endcamera);
+endscene.add(endLight); 
+endcamera.position.set(0,0, 20);
+endcamera.lookAt(0, -1, 0)
+const botaofinal = document.createElement('button');
+botaofinal.innerHTML = "RESTART";
+botaofinal.style.position = 'absolute';
+botaofinal.style.top = '50%';
+botaofinal.style.left = '50%';
+botaofinal.style.transform = 'translate(-50%, 50%)';
+botaofinal.style.width = "200px";
+botaofinal.style.height = "75px";
+botaofinal.style.fontSize = "50px";
+document.body.appendChild(botaofinal);
+
+botaofinal.addEventListener('click', function(){
+  sceneIndex = 0; 
+  botaofinal.style.display = 'none'; 
+})
+
+createTextFromString("G A M E", new THREE.Vector3(-7, 5, 0), endscene);
+createTextFromString("O V E R", new THREE.Vector3(-7, 1 , 0), endscene);
+//Fim do menu final
+
 
 class ball {
   constructor(x, y, velocity) {
@@ -12,7 +118,11 @@ class ball {
   }
 }
 
-let puColor = 0xff0000;
+let powerupType = true; 
+let antimatbool = false;
+let antimattime = 0; 
+let antimatclock = new THREE.Clock();
+let lives = 5;
 let gameStatus = 0; //0 = jogo não começou; 1 = jogo rolando ; 2 = jogo pausado ; 3 = perdeu ; 4 = ganhou
 let initialSpeed = 0.025,
   finalSpeed = 0.05,
@@ -22,13 +132,53 @@ let level = 1;
 let rows = 0;
 let cols = 0;
 let brokenBricks = 0;
-
+let aspect;
 let scene, renderer, light, keyboard;
 scene = new THREE.Scene(); // Create main scene
 renderer = initRenderer(); // View function in util/utils
 light = new THREE.DirectionalLight(0xffffff, 0.7);
 light.castShadow = true; //?Não sei oq isso faz, fiquei com preguiça de ler
 light.position.set(2, 5, 10);
+const listener = new THREE.AudioListener();
+const audioLoader = new THREE.AudioLoader(); 
+const rebatedorSound = new THREE.Audio(listener);
+audioLoader.load('../assets/sounds/rebatedor.mp3', function(buffer){
+  rebatedorSound.setBuffer(buffer);
+  rebatedorSound.setLoop(false);
+  rebatedorSound.setVolume(0.5);
+});
+const bloco1Sound = new THREE.Audio(listener);
+audioLoader.load('../assets/sounds/bloco1.mp3', function(buffer){
+  bloco1Sound.setBuffer(buffer);
+  bloco1Sound.setLoop(false);
+  bloco1Sound.setVolume(0.5);
+});
+const bloco2Sound = new THREE.Audio(listener);
+audioLoader.load('../assets/sounds/bloco2.mp3', function(buffer){
+  bloco2Sound.setBuffer(buffer);
+  bloco2Sound.setLoop(false);
+  bloco2Sound.setVolume(0.5);
+});
+const bloco3Sound = new THREE.Audio(listener);
+audioLoader.load('../assets/sounds/bloco3.mp3', function(buffer){
+  bloco3Sound.setBuffer(buffer);
+  bloco3Sound.setLoop(false);
+  bloco3Sound.setVolume(0.5);
+});
+
+//Skybox configuration
+const path = "./assets/skybox/";
+const format = ".png";
+const urls = [
+  path + "posx" + format,
+  path + "negx" + format,
+  path + "posy" + format,
+  path + "negy" + format,
+  path + "posz" + format,
+  path + "negz" + format,
+];
+let cubeMapTexture = new THREE.CubeTextureLoader().load(urls);
+scene.background = cubeMapTexture;
 
 // Shadow settings
 light.castShadow = true;
@@ -61,26 +211,15 @@ var tempoDecorrido = 0;
 // Main camera
 const camera = initializeCamera();
 const auxCamera = initializeCamera();
-scene.background = new THREE.Color(0x00008b);
+camera.add(listener);
 window.addEventListener(
   "resize",
   function () {
-    onWindowResizeOrthographic(camera, renderer);
+    onWindowResize(camera, renderer);
   },
   false
 );
 scene.add(camera);
-
-//Criar plano de fundo (para as sombras baterem)
-const geometry = new THREE.PlaneGeometry(10, 10);
-const material2 = new THREE.MeshLambertMaterial({
-  color: "darkslateblue",
-  side: THREE.DoubleSide,
-});
-const plane = new THREE.Mesh(geometry, material2);
-plane.position.set(0, 0, -0.05);
-plane.receiveShadow = true;
-scene.add(plane);
 
 const playerControls = new PointerLockControls(auxCamera, renderer.domElement);
 
@@ -90,10 +229,14 @@ let brickHolderX;
 
 if (level == 1) brickHolderX = -1.05;
 if (level == 2) brickHolderX = -0.95;
+if (level == 3) brickHolderX = -1.05;
 brickHolder.position.set(brickHolderX, 2.2, 0);
 scene.add(brickHolder);
 
 createBorders();
+
+let vidaLista = [];
+createVidas();
 
 var brickMatrix = initializeMatrix();
 let pad = createPad();
@@ -139,12 +282,21 @@ document.addEventListener("keydown", (event) => {
     if (level == 1) {
       level = 2;
       brickHolderX = -0.95;
+    } else if (level == 2) {
+      level = 3;
+      brickHolderX = -1.05;
     } else {
       level = 1;
       brickHolderX = -1.05;
     }
     brickHolder.position.set(brickHolderX, 2.2, 0);
     reset();
+  }
+
+  if (event.code == "KeyO") {
+    // Orbit Controls
+    orbitFlag = !orbitFlag;
+    orbit.enabled = orbitFlag;
   }
 
   if (event.code == "Enter") {
@@ -162,11 +314,24 @@ playerControls.addEventListener("unlock", () => {
   isPointerLocked = false;
 });
 var message = new SecondaryBox("");
-var message2 = new SecondaryBox("Seremos campões");
+var message2 = new SecondaryBox("");
 message2.box.style.top = "0";
 message2.box.style.bottom = "";
 
 //change the position of the message to the top of the screen
+
+var orbitFlag = false;
+var orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enabled = false;
+// Use this to show information onscreen
+let controls = new InfoBox();
+controls.add("Basic Scene");
+controls.addParagraph();
+controls.add("Use mouse to interact:");
+controls.add("* Left button to rotate");
+controls.add("* Right button to translate (pan)");
+controls.add("* Scroll to zoom in/out.");
+controls.show();
 
 render();
 
@@ -185,6 +350,7 @@ function reset() {
   }
   ballLista = [];
   powerUpsList = [];
+  vidaLista = [];
 
   var inicialVelocity = new THREE.Vector3();
   inicialVelocity.x = 0;
@@ -192,6 +358,9 @@ function reset() {
   ballLista.push(
     new ball(pad.position.x, pad.position.y + 0.2, inicialVelocity)
   );
+
+  lives = 5;
+  createVidas();
 
   gameStatus = 3;
   resetBricks();
@@ -281,8 +450,7 @@ function createBall(x, y) {
     color: "rgb(255,255,255)",
     shininess: "0.001",
     specular: "rgb(255,255,255)",
-    emissive: "rgb(255,255,255)",
-    emissiveIntensity: "1.0",
+
   });
   var obj = new THREE.Mesh(geometry, material);
   obj.position.set(x, y, 0);
@@ -333,6 +501,20 @@ function createPad() {
   rebatedor.castShadow = true;
   rebatedor.name = "Pad";
   scene.add(rebatedor);
+  var loader = new GLTFLoader();
+  loader.load("./assets/nave/AirShip.glb", function (gltf) {
+    var obj = gltf.scene;
+    obj.traverse(function (child) {
+      if (child.isMesh) child.castShadow = true;
+      if (child.material) child.material.side = THREE.DoubleSide;
+    });
+    rebatedor.add(obj);
+    obj.position.set(0, -0.24, -0.2);
+    obj.scale.set(0.05, 0.05, 0.05);
+    obj.rotateX(MathUtils.degToRad(-90));
+    obj.rotateZ(MathUtils.degToRad(180));
+  });
+
   return rebatedor;
 }
 
@@ -359,12 +541,27 @@ function chooseLevel(level) {
     3,5,4,1,3,5,2,6,3,5,4,1,3,5
     5,3,1,4,5,3,6,1,5,3,1,4,5,3
     4,1,3,5,2,6,3,5,4,1,3,5,2,6
-    7,7,7,7,7,7,7,7,7,7,7,7,7,7
-    7,7,7,7,7,7,7,7,7,7,7,7,7,7
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0
     3,5,2,6,3,5,4,1,3,5,2,6,3,5
     5,3,6,2,5,3,1,4,5,3,6,2,5,3
     2,6,3,5,4,1,3,5,2,6,3,5,4,1
     6,2,5,3,1,4,5,3,6,2,5,3,1,4
+    `;
+  } else if (level == 3) {
+    matrixString = `
+    2,2,2,2,2,2,2,2,2,3,2
+    0,0,0,0,0,0,0,0,0,0,0
+    1,1,1,7,1,1,1,1,1,7,1
+    0,0,0,3,0,0,0,0,0,0,0
+    5,5,5,7,5,5,5,5,5,7,5
+    0,0,0,3,0,0,0,0,0,0,0
+    5,5,5,7,5,5,5,5,5,7,5
+    0,0,0,3,0,0,0,0,0,0,0
+    1,1,1,7,1,1,1,1,1,7,1
+    0,0,0,0,0,0,0,0,0,0,0
+    2,2,2,2,2,2,2,2,2,3,2
+
     `;
   }
 
@@ -397,7 +594,7 @@ function initializeMatrix() {
       brickMatrix[i][j].obj.name = a;
       brickMatrix[i][j].id = a;
 
-      if (brickMatrix[i][j].resistance == 7)
+      if (brickMatrix[i][j].resistance == 0)
         removeBrick(brickMatrix[i][j].obj.name);
 
       a++;
@@ -409,13 +606,12 @@ function initializeMatrix() {
 
 function initializeCamera() {
   //let camera = new THREE.OrthographicCamera(-1, 1, 2, -2, 0.01, 10); //alterar valores?
-  let w = window.innerHeight / 2;
+  let w = window.innerWidth;
   let h = window.innerHeight;
-  let camera = new THREE.PerspectiveCamera(60, w / h, 0.01, 10); //fov, aspect, near, far
-  let aspect = 0.5;
+  let camera = new THREE.PerspectiveCamera(60, 2, 1, 7.7); //fov, aspect, near, far
+  aspect = 2;
   let f = 5;
-  camera.position.set(0, 0, 4.3);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  camera.position.set(0, -2.9, 2.5);
   if (camera instanceof THREE.PerspectiveCamera) {
     camera.aspect = aspect;
   }
@@ -426,14 +622,14 @@ function initializeCamera() {
     camera.bottom = -f / 2;
   }
   //camera.updateProjectionMatrix(); //?Isso faz o que?
-  renderer.setSize(w, h);
+  renderer.setSize(w, w/2);
   return camera;
 }
 
-function onWindowResizeOrthographic(camera, renderer, frustumSize = 5) {
-  let w = window.innerHeight / 2;
+function onWindowResize(camera, renderer, frustumSize = 5) {
+  let w = window.innerWidth;
   let h = window.innerHeight;
-  let aspect = 0.5;
+  //let aspect = 0.5;
   let f = frustumSize;
   if (camera instanceof THREE.PerspectiveCamera) {
     camera.aspect = aspect;
@@ -444,8 +640,17 @@ function onWindowResizeOrthographic(camera, renderer, frustumSize = 5) {
     camera.top = f / 2;
     camera.bottom = -f / 2;
   }
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  //  camera.updateProjectionMatrix();
+  renderer.setSize(w, w / 2);
+
+  //Botões dos menus
+  botao.style.width = window.innerWidth/10 + "px";
+  botao.style.height = window.innerHeight/20 + "px";
+  botao.style.fontSize = window.innerHeight/25 + "px";
+
+  botaofinal.style.width = window.innerWidth/10 + "px";
+  botaofinal.style.height = window.innerHeight/20 + "px";
+  botaofinal.style.fontSize = window.innerHeight/25 + "px";
 }
 
 function removeBrick(brickName) {
@@ -468,32 +673,43 @@ function updateBrick(brick) {
       brokenBricks += 1;
 
       //Bamboleio
-      if (brokenBricks >= 10 && ballLista.length == 1) {
+      if (brokenBricks >= 10 && (ballLista.length == 1 || !powerupType)) {
         var position = new THREE.Vector3();
         obj.getWorldPosition(position);
 
         //Objeto caindo para o powerup
-        let pu = new THREE.OctahedronGeometry(0.07, 0);
-        let pumaterial = new THREE.MeshPhongMaterial({
-          color: "rgb(255,255,255)",
-          shininess: "0.001",
-          specular: "rgb(255,255,255)",
-        });
+        let pu = new THREE.CapsuleGeometry(0.05, 0.1, 2, 7);
+        let texture;
+        let name;
+        if(powerupType==true)
+        {
+          const textureLoader = new THREE.TextureLoader();
+          texture = textureLoader.load('./assets/T.png');
+          name = "duplica"; 
+        }else
+        {
+          const textureLoader = new THREE.TextureLoader();
+          texture = textureLoader.load('./assets/S.png');
+          name = "antimateria"; 
+        }
+        
+        let pumaterial =  new THREE.MeshLambertMaterial({map:texture});
+
         var obj2 = new THREE.Mesh(pu, pumaterial);
         obj2.position.set(position.x, position.y, 0);
+        obj2.rotateZ(MathUtils.degToRad(90))
         obj2.castShadow = true;
-        var light = new THREE.PointLight(0xffffff, 1, 1);
-        light.position.set(0, 0, 0);
-        obj2.add(light);
+        obj2.name = name;
         scene.add(obj2);
         brokenBricks = 0;
         powerUpsList.push(obj2);
+        powerupType = !powerupType;
       }
       removeBrick(obj.name);
-      if (brickHolder.children.length == 0) gameStatus = 4;
+      if (brickHolder.children.length == 0 || (brickHolder.children.length == 8 && level == 3)) gameStatus = 4;
       break;
     case 1:
-      brick.color = "red";
+      brick.color = "lightgrey";
       break;
     case 2:
       brick.color = "blue";
@@ -509,18 +725,28 @@ function updateBrick(brick) {
       break;
     case 6:
       brick.color = "lightgrey";
+      return;
+      break;
+    case 7:
+      brick.color = "yellow";
+      return;
       break;
   }
 
   if (brick.resistance != 0) {
+    obj.material.map = null;
     obj.material.color.setColorName(brick.color);
+    var newmaterial = new THREE.MeshLambertMaterial({
+      color: brick.color,
+      side: THREE.DoubleSide,
+    });
+    obj.material = newmaterial;
   }
 }
 
 function createBrick(x, y, resistance, brickHolder) {
   var obj, color;
   var geometry = new THREE.BoxGeometry(0.2, 0.1, 0.1);
-
   switch (resistance) {
     case 1:
       color = "red";
@@ -539,14 +765,30 @@ function createBrick(x, y, resistance, brickHolder) {
       break;
     case 6:
       color = "lightgrey";
+      var textureLoader = new THREE.TextureLoader();
+      var bricktexture = textureLoader.load("./assets/steel.png");
+
+      var brickmaterial = new THREE.MeshLambertMaterial();
+      brickmaterial.map = bricktexture;
+
+      var obj = new THREE.Mesh(geometry, material);
+      obj.castShadow = true;
+      obj.name = "brick";
+      obj.position.set(x, y, 0);
+      brickHolder.add(obj);
+      collidableMeshList.push(obj);
+      obj.material = brickmaterial;
+
+      const brick = new Brick(obj, resistance, color);
+      return brick;
       break;
     case 7:
-      color = "white";
+      color = "yellow";
       break;
   }
   var material = new THREE.MeshLambertMaterial({
-    color: color,
     side: THREE.DoubleSide,
+    color: color,
   });
   material.side = THREE.DoubleSide;
   var obj = new THREE.Mesh(geometry, material);
@@ -566,6 +808,22 @@ function updateBall(b) {
   tempoDecorrido = clock.getElapsedTime();
   bola.translateX(ballVelocity.x);
   bola.translateY(ballVelocity.y);
+
+  if(antimatbool)
+  {
+    bola.material = new THREE.MeshPhongMaterial({
+      color: "rgb(255,0,0)",
+      shininess: "0.001",
+      specular: "rgb(255,0,0)",
+  
+    });
+  }else
+  { bola.material = new THREE.MeshPhongMaterial({
+    color: "rgb(255,255,255)",
+    shininess: "0.001",
+    specular: "rgb(255,255,255)",
+
+  });}
 
   const tbraycaster = new THREE.Raycaster();
   const tbdirection = new THREE.Vector3(
@@ -619,17 +877,56 @@ function updateBall(b) {
     }
     if (bola.position.y < -2) bola.position.y = -1.8;
     if (ballVelocity.y < 0) ballVelocity.y *= -1;
+
+    //Som do rebatedor
+    let sound = new THREE.Audio(listener);
+    audioLoader.load('../assets/sounds/rebatedor.mp3', function(buffer){
+      sound.setBuffer(buffer);
+      sound.setLoop(false);
+      sound.setVolume(0.5);
+      sound.play();
+    })
   } else if (tbintersects.length > 0 && tbintersects[0].distance <= 0.05) {
-    ballVelocity.y *= -1;
+    if(!antimatbool)
+      ballVelocity.y *= -1;
+
     if (tbintersects[0]["object"].parent == brickHolder) {
       var id = tbintersects[0]["object"].name.parseInt;
       for (let j = 0; j < cols; j++) {
         for (let i = rows - 1; i >= 0; i--) {
           if (brickMatrix[i][j].obj == tbintersects[0]["object"]) {
-            if (brickMatrix[i][j].resistance == 6)
-              brickMatrix[i][j].resistance = 1;
-            else brickMatrix[i][j].resistance = 0;
+            if (brickMatrix[i][j].resistance == 6){
+              brickMatrix[i][j].resistance = 1; 
+              //Som de bloco mais resistente que o normal
+              let sound = new THREE.Audio(listener); 
+              audioLoader.load('../assets/sounds/bloco2.mp3', function(buffer){
+                sound.setBuffer(buffer);
+                sound.setLoop(false);
+                sound.setVolume(0.5);
+                sound.play();
+              }) 
+            }
+            else if (brickMatrix[i][j].resistance != 7)
+            {
+              brickMatrix[i][j].resistance = 0;
+              let sound = new THREE.Audio(listener);
+              audioLoader.load('../assets/sounds/bloco1.mp3', function(buffer){
+                sound.setBuffer(buffer);
+                sound.setLoop(false);
+                sound.setVolume(0.5);
+                sound.play();
+              }) 
+            }
             updateBrick(brickMatrix[i][j]);
+            if(brickMatrix[i][j].resistance==7){
+            let sound = new THREE.Audio(listener); 
+            audioLoader.load('../assets/sounds/bloco2.mp3', function(buffer){
+              sound.setBuffer(buffer);
+              sound.setLoop(false);
+              sound.setVolume(0.5);
+              sound.play();
+            }) 
+          }
             return;
           }
         }
@@ -639,6 +936,7 @@ function updateBall(b) {
         removeBola(b);
         return;
       } else {
+        removeVida(vidaLista[0]);
         bola.position.set(pad.position.x, pad.position.y + 0.2, 0);
         gameStatus = 3;
         pad.position.set(0, -2.1, 0);
@@ -649,6 +947,18 @@ function updateBall(b) {
         }
         powerUpsList = [];
       }
+    }
+    else 
+    {
+      if(antimatbool)
+        ballVelocity.y *= -1;
+      let sound = new THREE.Audio(listener);
+      audioLoader.load('./assets/borders.m4a', function(buffer){
+        sound.setBuffer(buffer);
+        sound.setLoop(false);
+        sound.setVolume(1);
+        sound.play();
+      }) 
     }
   }
 
@@ -663,24 +973,51 @@ function updateBall(b) {
 
   const rlintersects = tbraycaster.intersectObjects(collidableMeshList);
   if (rlintersects.length > 0 && rlintersects[0].distance <= 0.07) {
-    ballVelocity.x *= -1;
+    if(!antimatbool)
+      ballVelocity.x *= -1;
 
     if (rlintersects[0]["object"].parent == brickHolder) {
       var id = rlintersects[0]["object"].name.parseInt;
       for (let j = 0; j < cols; j++) {
         for (let i = rows - 1; i >= 0; i--) {
           if (brickMatrix[i][j].obj == rlintersects[0]["object"]) {
-            if (brickMatrix[i][j].resistance == 6)
-              brickMatrix[i][j].resistance = 1;
-            else brickMatrix[i][j].resistance = 0;
+            if (brickMatrix[i][j].resistance == 6){
+              brickMatrix[i][j].resistance = 1; 
+              //Som de bloco mais resistente que o normal
+              let sound = new THREE.Audio(listener); 
+              audioLoader.load('../assets/sounds/bloco2.mp3', function(buffer){
+                sound.setBuffer(buffer);
+                sound.setLoop(false);
+                sound.setVolume(0.5);
+                sound.play();
+              }) 
+            }
+            else if (brickMatrix[i][j].resistance != 7)
+            {
+              brickMatrix[i][j].resistance = 0;
+              let sound = new THREE.Audio(listener);
+              audioLoader.load('../assets/sounds/bloco1.mp3', function(buffer){
+                sound.setBuffer(buffer);
+                sound.setLoop(false);
+                sound.setVolume(0.5);
+                sound.play();
+              }) 
+            }
             updateBrick(brickMatrix[i][j]);
-            return;
+            if(brickMatrix[i][j].resistance==7){
+            let sound = new THREE.Audio(listener); 
+            audioLoader.load('../assets/sounds/bloco2.mp3', function(buffer){
+              sound.setBuffer(buffer);
+              sound.setLoop(false);
+              sound.setVolume(0.5);
+              sound.play();
+            }) 
+            }
           }
         }
       }
     }
-
-    if (rlintersects[0]["object"].name == "Pad" && tempoDecorrido > 0.5) {
+    else if (rlintersects[0]["object"].name == "Pad" && tempoDecorrido > 0.5) {
       tempoDecorrido = 0;
       clock.stop();
       clock.start();
@@ -707,7 +1044,20 @@ function updateBall(b) {
         );
 
         if (ballVelocity.x > 0) ballVelocity.x *= -1;
+        rebatedorSound.play(); 
       }
+    }
+    else 
+    {
+      if(antimatbool)
+        ballVelocity.x *= -1;
+      let sound = new THREE.Audio(listener);
+      audioLoader.load('./assets/borders.m4a', function(buffer){
+        sound.setBuffer(buffer);
+        sound.setLoop(false);
+        sound.setVolume(1);
+        sound.play();
+      }) 
     }
   }
 
@@ -718,6 +1068,33 @@ function newReflect(v, normal) {
   var v1 = new THREE.Vector3();
 
   return v.sub(v1.copy(normal).multiplyScalar(2 * v.dot(normal)));
+}
+
+function createVidas() {
+  vidaLista = [];
+
+  for (let index = 0; index < 5; index++) {
+    vidaLista.push(
+      new ball(2.1 - index * 0.15, 2.3, new THREE.Vector3(0, 0, 0))
+    );
+  }
+}
+
+function removeVida(bola) {
+  lives -= 1;
+
+  console.log(bola);
+
+  var index = vidaLista.indexOf(bola);
+  if (index > -1) {
+    vidaLista.splice(index, 1);
+  }
+
+  scene.remove(bola.obj);
+
+  if (lives == 0) {
+    reset();
+  }
 }
 
 function removeBola(bola) {
@@ -753,6 +1130,7 @@ function increaseSpeed(b) {
   }
 }
 
+//Na verdade, agora triplica as bolas
 function duplicaBola() {
   const matrizRotacao = new THREE.Matrix4();
   matrizRotacao.makeRotationAxis(new THREE.Vector3(0, 0, 1), Math.PI / 4);
@@ -768,12 +1146,28 @@ function duplicaBola() {
     novaBola.velocity.x = aux;
   }
   ballLista.push(novaBola);
+
+  matrizRotacao.makeRotationAxis(new THREE.Vector3(0, 0, 1), -Math.PI / 4);
+  var novaBola2 = new ball(
+    ballLista[0].obj.position.x,
+    ballLista[0].obj.position.y,
+    ballLista[0].velocity.clone().applyMatrix4(matrizRotacao)
+  );
+
+  if (Math.abs(novaBola2.velocity.y) < 0.01) {
+    var aux = novaBola2.velocity.y;
+    novaBola2.velocity.y = novaBola2.velocity.x;
+    novaBola2.velocity.x = aux;
+  }
+  ballLista.push(novaBola2);
 }
 
 function updatePU(pu) {
-  pu.translateY(-0.015);
-  puColor += 500;
-  pu.material.color.setHex(puColor);
+  //pu.translateX(-0.015);
+  /* puColor += 500;
+  pu.material.color.setHex(puColor); */
+  pu.rotation.x +=0.1; 
+  pu.position.y -= 0.01; 
   const tbraycaster = new THREE.Raycaster();
   const tbdirection = new THREE.Vector3(0, -1, 0);
 
@@ -792,7 +1186,14 @@ function updatePU(pu) {
     }
     scene.remove(pu);
     //BARABARABARA: AUUMENTAR ESSE NÚMERO, PARA AS ESTRELAS
-    if (ballLista.length <= 1) duplicaBola();
+    if (ballLista.length <= 1 && pu.name == "duplica") duplicaBola();
+    else
+    {
+      antimatclock.stop();
+      antimatclock.start();
+      antimatbool = true;
+      antimattime = 0;
+    }
   }
   if (
     tbintersects.length > 0 &&
@@ -808,60 +1209,127 @@ function updatePU(pu) {
 }
 
 function render() {
-  message2.changeMessage("Speed: " + ((speed * 100) / 2.5).toFixed(4));
+  if (sceneIndex == 0)
+  {
+    if(sceneIndex != 0)
+    {
+      botao.style.display = 'none';
+    }
+    else
+    {
+      botao.style.display = '';
+    }
+    if(sceneIndex != 2)
+    {
+      botaofinal.style.display = 'none';
+    }
+    else
+    {
+      botaofinal.style.display ='';
+    }
 
-  if (gameStatus == 0) {
-    stickBall();
-    message.changeMessage("Press Space and then Left Click to start");
+    requestAnimationFrame(render);
+    renderer.render(menuscene, menucamera); // Render scene
   }
+  else if(sceneIndex == 1){
+    message2.changeMessage("Lives: " + lives);
 
-  if (gameStatus == 1) {
-    for (let i = 0; i < ballLista.length; i++) {
-      if (ballLista[i]) {
-        increaseSpeed(ballLista[i]);
-        updateBall(ballLista[i]);
+    if (orbitFlag == true) {
+      orbit.enabled = true;
+      controls.infoBox.style.display = "block";
+    }
+
+    if (orbitFlag == false) {
+      orbit.enabled = false;
+      orbit.reset();
+      camera.lookAt(new THREE.Vector3(0,-1.1,0));
+      controls.infoBox.style.display = "none";
+    }
+
+    if (gameStatus == 0) {
+      stickBall();
+      message.changeMessage("Press Space and then Left Click to start");
+    }
+
+    if (gameStatus == 1) {
+      for (let i = 0; i < ballLista.length; i++) {
+        if (ballLista[i]) {
+          increaseSpeed(ballLista[i]);
+          updateBall(ballLista[i]);
+        }
       }
+      for (let i = 0; i < powerUpsList.length; i++) {
+        updatePU(powerUpsList[i]);
+      }
+      message.changeMessage("Press Space to pause");
     }
-    for (let i = 0; i < powerUpsList.length; i++) {
-      updatePU(powerUpsList[i]);
+
+    if (gameStatus == 2) {
+      message.changeMessage("Press Space to unpause");
     }
-    message.changeMessage("Press Space to pause");
-  }
 
-  if (gameStatus == 2) {
-    message.changeMessage("Press Space to unpause");
-  }
-
-  if (gameStatus == 3) {
-    stickBall();
-    message.changeMessage("Left click to continue!");
-  }
-
-  if (gameStatus == 4) {
-    message.changeMessage("You've won!!! Press R to restart!");
-    //Change Nivel
-    if (level == 1) {
-      level = 2;
-      brickHolderX = -0.95;
-    } else {
-      level = 1;
-      brickHolderX = -1.05;
+    if (gameStatus == 3) {
+      stickBall();
+      message.changeMessage("Left click to continue!");
     }
-    brickHolder.position.set(brickHolderX, 2.2, 0);
-    reset();
-  }
 
-  requestAnimationFrame(render);
-  renderer.render(scene, camera); // Render scene
+    if (gameStatus == 4) {
+      message.changeMessage("You've won!!! Press R to restart!");
+      //Change Nivel
+      if (level == 1) {
+        level = 2;
+        brickHolderX = -0.95;
+      } else if (level == 2) {
+        level = 3;
+        brickHolderX = -1.05;
+      } else {
+        level = 1;
+        brickHolderX = -1.05;
+        sceneIndex = 2; 
+      }
+      brickHolder.position.set(brickHolderX, 2.2, 0);
+      reset();
+    }
+    antimattime = antimatclock.getElapsedTime();
+    if(antimattime > 7)
+      antimatbool = false; 
+    requestAnimationFrame(render);
+    renderer.render(scene, camera); // Render scene
+  }
+  else if(sceneIndex ==2)
+  {
+    if(sceneIndex != 0)
+    {
+      botao.style.display = 'none';
+    }
+    else
+    {
+      botao.style.display = '';
+    }
+    if(sceneIndex != 2)
+    {
+      botaofinal.style.display = 'none';
+    }
+    else
+    {
+      botaofinal.style.display ='';
+    }
+    
+    requestAnimationFrame(render);
+    renderer.render(endscene, endcamera);
+  }
+  
 }
 
 function createBorders() {
-  let upBorder = new THREE.BoxGeometry(3, 0.1, 0.2);
+  let upBorder = new THREE.BoxGeometry(2.5, 0.1, 0.2);
   let borderMaterial = new THREE.MeshLambertMaterial({
     color: "darkslateblue",
     side: THREE.DoubleSide,
   });
   borderMaterial.side = THREE.DoubleSide;
+
+  
   let upb = new THREE.Mesh(upBorder, borderMaterial);
   upb.castShadow = true;
   upb.position.set(0.0, 2.5, 0.0);
@@ -869,7 +1337,7 @@ function createBorders() {
   scene.add(upb);
   collidableMeshList.push(upb);
 
-  let leftBorder = new THREE.BoxGeometry(0.1, 10, 0.2);
+  let leftBorder = new THREE.BoxGeometry(0.1, 6, 0.2);
   let lb = new THREE.Mesh(leftBorder, borderMaterial);
   lb.castShadow = true;
   lb.position.set(-1.25, 0.0, 0.0);
@@ -877,7 +1345,7 @@ function createBorders() {
   scene.add(lb);
   collidableMeshList.push(lb);
 
-  let rightBorder = new THREE.BoxGeometry(0.1, 10, 0.2);
+  let rightBorder = new THREE.BoxGeometry(0.1, 6, 0.2);
   let rb = new THREE.Mesh(rightBorder, borderMaterial);
   rb.castShadow;
   rb.position.set(1.25, 0.0, 0.0);
@@ -885,8 +1353,10 @@ function createBorders() {
   scene.add(rb);
   collidableMeshList.push(rb);
 
-  let downBorder = new THREE.BoxGeometry(3, 0.1, 0.2);
-  let db = new THREE.Mesh(downBorder, borderMaterial);
+  //!Tem que tirar isso até o final do trabalho!!
+  let downBorderMaterial = new THREE.MeshLambertMaterial({transparent: true, opacity: 0.0})
+  let downBorder = new THREE.BoxGeometry(2.5, 0.1, 0.2);
+  let db = new THREE.Mesh(downBorder,  downBorderMaterial);
   db.position.set(0.0, -2.55, 0.0);
   db.name = "down";
   scene.add(db);
