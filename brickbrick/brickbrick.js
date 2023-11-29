@@ -11,7 +11,7 @@ import { InfoBox, SecondaryBox, initRenderer } from "../libs/util/util.js";
 
 var buttons = new Buttons(onButtonDown, onButtonUp);
 
-var isMouseDown = false;
+var isPointerDown = false;
 var isFullscreen = false;
 
 let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
@@ -315,9 +315,9 @@ render();
 
 /* ------------------ FUNCTIONS ------------------ */
 
-function onMouseMoveLocked(event) {
-  if (isMouseDown) {
-    // Calculate the horizontal movement based on mouse position
+function onPointerMoveLocked(event) {
+  if (isPointerDown) {
+    // Calculate the horizontal movement based on pointer position
     const movementX =
       event.movementX || event.mozMovementX || event.webkitMovementX || 0;
 
@@ -828,98 +828,48 @@ function createHitbox() {
 
 // Function to update the pad
 function updatePad() {
-  console.log(isInputActive);
+  console.log(isPointerDown);
 
-  // Set initial hitbox position
   hitbox.position.copy(pad.position);
   hitbox.position.y += 0.05;
 
-  // Event listeners for touch events
-  window.addEventListener("touchstart", onTouchStart);
-  window.addEventListener("touchend", onTouchEnd);
-  window.addEventListener("touchmove", onTouchMoveLocked);
+  // Event listener for pointer down
+  window.addEventListener("pointerdown", onPointerDown);
 
-  function onTouchStart(event) {
-    handleInputStart(event.touches[0]);
-  }
-
-  function onTouchEnd(event) {
-    handleInputEnd(event.touches[0]);
-  }
-
-  // Handle touch input start
-  function handleInputStart(event) {
+  function onPointerDown(event) {
     const canvasBounds = renderer.domElement.getBoundingClientRect();
 
     if (gameStatus == 0 || gameStatus == 1) {
-      let touch = new THREE.Vector2();
-      touch.x =
+      let pointer = new THREE.Vector2();
+      pointer.x =
         ((event.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
-      touch.y =
+      pointer.y =
         -((event.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
 
       // Define the boundaries of the restricted area
       const minX = -0.9; // Minimum x-coordinate within the area
       const maxX = 0.9; // Maximum x-coordinate within the area
 
-      // if the touch intersects the hitbox, set the flag to true
+      // if the mouse intersects the hitbox, set the flag to true
       const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(touch, camera);
+      raycaster.setFromCamera(pointer, camera);
       const intersects = raycaster.intersectObjects([hitbox]);
 
       if (intersects.length > 0) {
-        isInputActive = true;
+        isPointerDown = true;
       }
     }
   }
 
-  // Handle touch input end
-  function handleInputEnd() {
-    isInputActive = false;
+  // Event listener for pointer up
+  window.addEventListener("pointerup", onPointerUp);
+
+  function onPointerUp(event) {
+    isPointerDown = false;
   }
 
-  // Handle touch move
-  function onTouchMoveLocked(event) {
-    if (isInputActive) {
-      const touch = event.touches[0];
-      handleTouchMove(touch);
-    }
-  }
-
-  // Handle touch movement
-  function handleTouchMove(touch) {
-    const canvasBounds = renderer.domElement.getBoundingClientRect();
-    const pointer = new THREE.Vector2();
-    pointer.x =
-      ((touch.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
-    pointer.y =
-      -((touch.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
-
-    // Calculate the horizontal movement based on touch position
-    const movementX = pointer.x - previousPointerX;
-
-    // Define the horizontal movement speed
-    const horizontalSpeed = 0.01; // Adjust this value as needed
-
-    // Calculate the new x-coordinate for the platform
-    const newPlatformX = pad.position.x + movementX * horizontalSpeed;
-
-    // Define the boundaries of the restricted area
-    const minX = -0.9; // Minimum x-coordinate within the area
-    const maxX = 0.9; // Maximum x-coordinate within the area
-
-    // Clamp the new x-coordinate within the specified boundaries
-    const clampedX = Math.min(Math.max(newPlatformX, minX), maxX);
-
-    // Update the platform's position
-    pad.position.setX(clampedX);
-
-    // Update the previous touch position
-    previousPointerX = pointer.x;
-  }
-
-  // Store the previous touch position
-  let previousPointerX = 0;
+  // Event listener for pointer move
+  window.addEventListener("pointermove", onPointerMoveLocked);
 }
 
 function updateBall(b) {
