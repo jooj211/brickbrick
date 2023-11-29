@@ -410,6 +410,7 @@ function reset() {
   createVidas();
 
   gameStatus = 3;
+  hitbox.position.copy(pad.position);
   resetBricks();
 }
 
@@ -1017,6 +1018,7 @@ function updateBall(b) {
         bola.position.set(pad.position.x, pad.position.y + 0.2, 0);
         gameStatus = 3;
         pad.position.set(0, -2.1, 0);
+        hitbox.position.copy(pad.position);
         ballVelocity.x = 0;
         ballVelocity.y = initialSpeed * Math.sin(MathUtils.degToRad(90));
         for (let i = powerUpsList.length - 1; i >= 0; i--) {
