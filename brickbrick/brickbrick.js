@@ -10,8 +10,9 @@ import KeyboardState from "../libs/util/KeyboardState.js";
 import { InfoBox, SecondaryBox, initRenderer } from "../libs/util/util.js";
 
 var buttons = new Buttons(onButtonDown, onButtonUp);
-let pressedA = false;
-let pressedB = false;
+
+var isMouseDown = false;
+var isFullscreen = false;
 
 let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
 
@@ -30,15 +31,15 @@ botao.style.top = "50%";
 botao.style.left = "50%";
 botao.style.transform = "translate(-50%, 50%)";
 botao.style.width = "200px";
-botao.style.height = "75px";
+botao.style.height = "100px";
 botao.style.fontSize = "50px";
 document.body.appendChild(botao);
 
-const botaoLeft = document.getElementById("left");
-const botaoRight = document.getElementById("right");
+const botaoLaunch = document.getElementById("launch");
+const botaoFS = document.getElementById("fullscreen");
 const botaoPause = document.getElementById("pause");
-botaoLeft.style.display = "none";
-botaoRight.style.display = "none";
+botaoLaunch.style.display = "none";
+botaoFS.style.display = "none";
 botaoPause.style.display = "none";
 
 let glow = 0.5;
@@ -46,8 +47,8 @@ let glow = 0.5;
 botao.addEventListener("click", function () {
   sceneIndex = 1;
   botao.style.display = "none";
-  botaoLeft.style.display = "block";
-  botaoRight.style.display = "block";
+  botaoLaunch.style.display = "block";
+  botaoFS.style.display = "block";
   botaoPause.style.display = "block";
 });
 function createTextGeometry(character, position, cena) {
@@ -246,6 +247,7 @@ createVidas();
 
 var brickMatrix = initializeMatrix();
 let pad = createPad();
+let hitbox = createHitbox();
 collidableMeshList.push(pad);
 let ballLista = [];
 ballLista.push(
@@ -254,15 +256,6 @@ ballLista.push(
 
 scene.add(camera);
 let powerUpsList = [];
-
-document.addEventListener("click", function (event) {
-  if (event.button === 0) {
-    if (gameStatus == 3 || gameStatus == 0) {
-      ballClock.start();
-      gameStatus = 1;
-    }
-  }
-});
 
 document.addEventListener("keydown", (event) => {
   if (event.code == "KeyR") {
@@ -319,36 +312,72 @@ render();
 
 /* ------------------ FUNCTIONS ------------------ */
 
+function onMouseMoveLocked(event) {
+  if (isMouseDown) {
+    // Calculate the horizontal movement based on mouse position
+    const movementX =
+      event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+
+    // Define the horizontal movement speed
+    const horizontalSpeed = 0.004; // Adjust this value as needed
+
+    // Calculate the new x-coordinate for the platform
+    const newPlatformX = pad.position.x + movementX * horizontalSpeed;
+
+    // Define the boundaries of the restricted area
+    const minX = -0.9; // Minimum x-coordinate within the area
+    const maxX = 0.9; // Maximum x-coordinate within the area
+
+    // Clamp the new x-coordinate within the specified boundaries
+    const clampedX = Math.min(Math.max(newPlatformX, minX), maxX);
+
+    // Update the platform's position
+    pad.position.setX(clampedX);
+  }
+}
+
 function onButtonDown(event) {
   switch (event.target.id) {
-    case "left":
-      pressedA = true;
+    case "launch":
+      if (gameStatus == 0 || gameStatus == 3) {
+        ballClock.start();
+        gameStatus = 1;
+      }
       break;
-    case "right":
-      pressedB = true;
+    case "fullscreen":
+      if (!isFullscreen) {
+        var element = document.querySelector("#webgl-output");
+        element.requestFullscreen();
+        isFullscreen = true;
+      } else {
+        document.exitFullscreen();
+        isFullscreen = false;
+      }
       break;
     case "pause":
+      var element = document.querySelector("#pause");
       if (gameStatus == 1) {
+        element.innerHTML = "►";
         gameStatus = 2;
         ballClock.stop();
       } else if (gameStatus == 2) {
+        element.innerHTML = "||";
         gameStatus = 1;
         ballClock.start();
       }
+
       break;
   }
 }
 
 function onButtonUp(event) {
-  pressedA = pressedB = false;
-}
-
-function executeIfKeyPressed() {
-  if (pressedA) {
-    if (pad.position.x > -0.8) pad.position.x -= 0.1;
-  }
-  if (pressedB) {
-    if (pad.position.x < 0.8) pad.position.x += 0.1;
+  switch (event.target.id) {
+    case "launch":
+      break;
+    case "fullscreen":
+      break;
+    case "pause":
+      break;
   }
 }
 
@@ -777,6 +806,68 @@ function createBrick(x, y, resistance, brickHolder) {
   return brick;
 }
 
+function createHitbox() {
+  // Create a semi-transparent box (hitbox)
+  const hitboxGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.1);
+  const hitboxMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.2,
+  });
+  const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
+  hitbox.name = "hitbox";
+  // Add the hitbox to the pad
+  scene.add(hitbox);
+  hitbox.position.copy(pad.position);
+  hitbox.position.y += 0.05;
+  return hitbox;
+}
+
+// Function to update the pad
+function updatePad() {
+  console.log(isMouseDown);
+
+  hitbox.position.copy(pad.position);
+  hitbox.position.y += 0.05;
+  // Event listener for mouse down
+  window.addEventListener("mousedown", onMouseDown);
+
+  function onMouseDown(event) {
+    const canvasBounds = renderer.domElement.getBoundingClientRect();
+
+    if (gameStatus == 0 || gameStatus == 1) {
+      let pointer = new THREE.Vector2();
+      pointer.x =
+        ((event.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
+      pointer.y =
+        -((event.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
+
+      // Define the boundaries of the restricted area
+      const minX = -0.9; // Minimum x-coordinate within the area
+      const maxX = 0.9; // Maximum x-coordinate within the area
+
+      // if the mouse intersects the hitbox, set the flag to true
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects([hitbox]);
+
+      if (intersects.length > 0) {
+        isMouseDown = true;
+      }
+    }
+  }
+
+  // Event listener for mouse up
+  window.addEventListener("mouseup", onMouseUp);
+
+  function onMouseUp(event) {
+    isMouseDown = false;
+  }
+
+  // Event listener for mouse move
+  window.addEventListener("mousemove", onMouseMoveLocked);
+}
+
 function updateBall(b) {
   if (gameStatus != 1) return;
   var bola = b.obj;
@@ -861,6 +952,8 @@ function updateBall(b) {
       sound.play();
     });
   } else if (tbintersects.length > 0 && tbintersects[0].distance <= 0.05) {
+    console.log(tbintersects[0]["object"]);
+
     if (!antimatbool) ballVelocity.y *= -1;
 
     if (tbintersects[0]["object"].parent == brickHolder) {
@@ -1190,7 +1283,7 @@ function updatePU(pu) {
 }
 
 function render() {
-  executeIfKeyPressed();
+  // print whatever the ball is intersecting with
 
   if (sceneIndex == 0) {
     if (sceneIndex != 0) {
@@ -1203,7 +1296,6 @@ function render() {
     } else {
       botaofinal.style.display = "";
     }
-
     requestAnimationFrame(render);
     renderer.render(menuscene, menucamera); // Render scene
   } else if (sceneIndex == 1) {
@@ -1227,6 +1319,8 @@ function render() {
     }
 
     if (gameStatus == 1) {
+      updatePad();
+
       for (let i = 0; i < ballLista.length; i++) {
         if (ballLista[i]) {
           increaseSpeed(ballLista[i]);
