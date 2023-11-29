@@ -1019,6 +1019,7 @@ function updateBall(b) {
         gameStatus = 3;
         pad.position.set(0, -2.1, 0);
         hitbox.position.copy(pad.position);
+        hitbox.position.y += 0.05;
         ballVelocity.x = 0;
         ballVelocity.y = initialSpeed * Math.sin(MathUtils.degToRad(90));
         for (let i = powerUpsList.length - 1; i >= 0; i--) {
