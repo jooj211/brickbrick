@@ -34,11 +34,21 @@ botao.style.height = "75px";
 botao.style.fontSize = "50px";
 document.body.appendChild(botao);
 
+const botaoLeft = document.getElementById("left");
+const botaoRight = document.getElementById("right");
+const botaoPause = document.getElementById("pause");
+botaoLeft.style.display = "none";
+botaoRight.style.display = "none";
+botaoPause.style.display = "none";
+
 let glow = 0.5;
 
 botao.addEventListener("click", function () {
   sceneIndex = 1;
   botao.style.display = "none";
+  botaoLeft.style.display = "block";
+  botaoRight.style.display = "block";
+  botaoPause.style.display = "block";
 });
 function createTextGeometry(character, position, cena) {
   const loader = new FontLoader();
@@ -304,7 +314,6 @@ controls.add("Use mouse to interact:");
 controls.add("* Left button to rotate");
 controls.add("* Right button to translate (pan)");
 controls.add("* Scroll to zoom in/out.");
-
 
 render();
 
