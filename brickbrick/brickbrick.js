@@ -1320,7 +1320,7 @@ function createVidas() {
 
   for (let index = 0; index < 5; index++) {
     vidaLista.push(
-      new ball(2.1 - index * 0.15, 2.3, new THREE.Vector3(0, 0, 0))
+      new ball(2.1 - index * 0.15, 1.7, new THREE.Vector3(0, 0, 0))
     );
     vidaLista[index].obj.material = new THREE.MeshPhongMaterial({
       color: "rgb(255,255,255)",
@@ -1573,7 +1573,7 @@ function createBorders() {
   let leftBorder = new THREE.BoxGeometry(0.1, 6, 0.2);
   let lb = new THREE.Mesh(leftBorder, borderMaterial);
   lb.castShadow = true;
-  lb.position.set(-1.25, 0.0, 0.0);
+  lb.position.set(-1.25, -0.45, 0.0);
   lb.name = "left";
   scene.add(lb);
   collidableMeshList.push(lb);
@@ -1581,7 +1581,7 @@ function createBorders() {
   let rightBorder = new THREE.BoxGeometry(0.1, 6, 0.2);
   let rb = new THREE.Mesh(rightBorder, borderMaterial);
   rb.castShadow;
-  rb.position.set(1.25, 0.0, 0.0);
+  rb.position.set(1.25, -0.45, 0.0);
   rb.name = "right";
   scene.add(rb);
   collidableMeshList.push(rb);
