@@ -11,6 +11,7 @@ import KeyboardState from "../libs/util/KeyboardState.js";
 import { InfoBox, SecondaryBox, initRenderer } from "../libs/util/util.js";
 
 var buttons = new Buttons(onButtonDown, onButtonUp);
+//var touchButtons = new Buttons(onTouchStart, onTouchEnd);
 let isPointerDown = false;
 let isFullscreen = false;
 let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
@@ -242,6 +243,10 @@ scene.add(camera);
 let hitbox = createHitbox();
 let powerUpsList = [];
 
+// Use touchstart and touchend events only for the "pause" button
+document.getElementById("pause").addEventListener("touchstart", onTouchStart);
+document.getElementById("pause").addEventListener("touchend", onTouchEnd);
+
 botao.addEventListener("click", function () {
   sceneIndex = 1;
   botao.style.display = "none";
@@ -376,8 +381,6 @@ function onPointerMoveLocked(event) {
 }
 
 function onButtonDown(event) {
-  event.preventDefault();
-
   switch (event.target.id) {
     case "launch":
       if (gameStatus == 0 || gameStatus == 3) {
@@ -970,13 +973,32 @@ function updatePad() {
 
   function onPointerUp(event) {
     isPointerDown = false;
+    
+  }
 
+  function onTouchStart(event) {
     switch (event.target.id) {
-      case "launch":
+      case "pause":
+        var element = document.querySelector("#pause");
+        if (gameStatus == 1) {
+          element.innerHTML = "►";
+          gameStatus = 2;
+          ballClock.stop();
+        } else if (gameStatus == 2) {
+          element.innerHTML = "||";
+          gameStatus = 1;
+          ballClock.start();
+        }
         break;
-      case "fullscreen":
+      // Use touchstart only for "pause" button
+    }
+  }
+
+  function onTouchEnd(event) {
+    switch (event.target.id) {
+      case "pause":
         break;
-      // Use pointerup for all buttons except "pause"
+      // Use touchend only for "pause" button
     }
   }
 
