@@ -219,7 +219,7 @@ let brickHolderX;
 if (level == 1) brickHolderX = -1.05;
 if (level == 2) brickHolderX = -0.95;
 if (level == 3) brickHolderX = -1.05;
-brickHolder.position.set(brickHolderX, 2.2, 0);
+brickHolder.position.set(brickHolderX, 1.8, 0);
 scene.add(brickHolder);
 
 createBorders();
@@ -299,7 +299,7 @@ document.addEventListener("keydown", (event) => {
       level = 1;
       brickHolderX = -1.05;
     }
-    brickHolder.position.set(brickHolderX, 2.2, 0);
+    brickHolder.position.set(brickHolderX, 1.8, 0);
     reset();
   }
 
@@ -356,7 +356,7 @@ function onPointerMoveLocked(event) {
       event.movementX || event.mozMovementX || event.webkitMovementX || 0;
 
     // Define the horizontal movement speed
-    const horizontalSpeed = 0.004; // Adjust this value as needed
+    const horizontalSpeed = 0.007; // Adjust this value as needed
 
     // Calculate the new x-coordinate for the platform
     const newPlatformX = pad.position.x + movementX * horizontalSpeed;
@@ -1307,7 +1307,7 @@ function createVidas() {
 
   for (let index = 0; index < 5; index++) {
     vidaLista.push(
-      new ball(2.1 - index * 0.15, 2.3, new THREE.Vector3(0, 0, 0))
+      new ball(2.1 - index * 0.15, 1.8, new THREE.Vector3(0, 0, 0))
     );
     vidaLista[index].obj.material = new THREE.MeshPhongMaterial({
       color: "rgb(255,255,255)",
@@ -1518,7 +1518,7 @@ function render() {
         brickHolderX = -1.05;
         sceneIndex = 2;
       }
-      brickHolder.position.set(brickHolderX, 2.2, 0);
+      brickHolder.position.set(brickHolderX, 1.8, 0);
       reset();
     }
     antimattime = antimatclock.getElapsedTime();
