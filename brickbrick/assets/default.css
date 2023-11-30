@@ -51,7 +51,7 @@ body {
     text-align: center;
     font-size: 20px;
     border-radius: 8px;
-
+    user-select: none;
     /* make it be clickable when hovering */
     cursor: pointer;
 }

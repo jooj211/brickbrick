@@ -10,7 +10,7 @@ import { Buttons } from "../libs/other/buttons.js";
 import KeyboardState from "../libs/util/KeyboardState.js";
 import { InfoBox, SecondaryBox, initRenderer } from "../libs/util/util.js";
 
-var buttons = new Buttons(onPointerDown, onPointerUp);
+var buttons = new Buttons(onTouchStart, onTouchEnd);
 
 let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
 
@@ -345,6 +345,9 @@ controls.add("* Right button to translate (pan)");
 controls.add("* Scroll to zoom in/out.");
 controls.show();
 
+// Call this function to add touch events for mobile
+addTouchEvents(); 
+
 render();
 
 /* ------------------ FUNCTIONS ------------------ */
@@ -373,7 +376,7 @@ function onPointerMoveLocked(event) {
   }
 }
 
-function onPointerDown(event) {
+function onTouchStart(event) {
   switch (event.target.id) {
     case "launch":
       if (gameStatus == 0 || gameStatus == 3) {
@@ -406,7 +409,7 @@ function onPointerDown(event) {
   }
 }
 
-function onPointerUp(event) {
+function onTouchEnd(event) {
   switch (event.target.id) {
     case "launch":
       break;
@@ -417,26 +420,11 @@ function onPointerUp(event) {
   }
 }
 
-// Use pointerdown and pointerup events for mobile devices
-function addPointerEvents() {
-  document.addEventListener("pointerdown", onPointerDown);
-  document.addEventListener("pointerup", onPointerUp);
-}
-
-// Add touch events for additional mobile support
+// Use touchstart and touchend events for mobile devices
 function addTouchEvents() {
-  document.addEventListener("touchstart", onPointerDown);
-  document.addEventListener("touchend", onPointerUp);
+  document.addEventListener("touchstart", onTouchStart);
+  document.addEventListener("touchend", onTouchEnd);
 }
-
-// Add both pointer and touch events
-function addMobileEvents() {
-  addPointerEvents();
-  addTouchEvents();
-}
-
-// Call this function to add events for both desktop and mobile
-addMobileEvents();
 
 function reset() {
   gameStatus = 1;
