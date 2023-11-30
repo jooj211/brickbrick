@@ -356,7 +356,7 @@ function onPointerMoveLocked(event) {
       event.movementX || event.mozMovementX || event.webkitMovementX || 0;
 
     // Define the horizontal movement speed
-    const horizontalSpeed = 0.007; // Adjust this value as needed
+    const horizontalSpeed = 0.01; // Adjust this value as needed
 
     // Calculate the new x-coordinate for the platform
     const newPlatformX = pad.position.x + movementX * horizontalSpeed;
@@ -373,7 +373,9 @@ function onPointerMoveLocked(event) {
   }
 }
 
-function onButtonDown(event) {
+
+
+function onPointerDown(event) {
   switch (event.target.id) {
     case "launch":
       if (gameStatus == 0 || gameStatus == 3) {
@@ -402,12 +404,11 @@ function onButtonDown(event) {
         gameStatus = 1;
         ballClock.start();
       }
-
       break;
   }
 }
 
-function onButtonUp(event) {
+function onPointerUp(event) {
   switch (event.target.id) {
     case "launch":
       break;
@@ -417,6 +418,28 @@ function onButtonUp(event) {
       break;
   }
 }
+
+// Use pointerdown and pointerup events for mobile devices
+function addPointerEvents() {
+  document.addEventListener("pointerdown", onPointerDown);
+  document.addEventListener("pointerup", onPointerUp);
+}
+
+// Add touch events for additional mobile support
+function addTouchEvents() {
+  document.addEventListener("touchstart", onPointerDown);
+  document.addEventListener("touchend", onPointerUp);
+}
+
+// Add both pointer and touch events
+function addMobileEvents() {
+  addPointerEvents();
+  addTouchEvents();
+}
+
+// Call this function to add events for both desktop and mobile
+addMobileEvents();
+
 
 function reset() {
   gameStatus = 1;
