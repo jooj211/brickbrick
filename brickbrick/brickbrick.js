@@ -10,7 +10,7 @@ import { Buttons } from "../libs/other/buttons.js";
 import KeyboardState from "../libs/util/KeyboardState.js";
 import { InfoBox, SecondaryBox, initRenderer } from "../libs/util/util.js";
 
-var buttons = new Buttons(onButtonDown, onButtonUp);
+var buttons = new Buttons(onPointerDown, onPointerUp);
 
 let sceneIndex = 0; //0 = main menu; 1 = jogo normal ; 2 = menu final.
 
@@ -373,8 +373,6 @@ function onPointerMoveLocked(event) {
   }
 }
 
-
-
 function onPointerDown(event) {
   switch (event.target.id) {
     case "launch":
@@ -439,7 +437,6 @@ function addMobileEvents() {
 
 // Call this function to add events for both desktop and mobile
 addMobileEvents();
-
 
 function reset() {
   gameStatus = 1;
